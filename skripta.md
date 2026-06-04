@@ -7,7 +7,7 @@
 
 ---
 
-# 📋 SADRŽAJ
+# SADRŽAJ
 
 1. [Višestruka linearna regresija](#1-višestruka-linearna-regresija)
 2. [Dijagnostika reziduala](#2-dijagnostika-reziduala)
