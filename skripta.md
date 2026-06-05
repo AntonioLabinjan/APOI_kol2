@@ -1,6 +1,4 @@
 # ISPITNA SKRIPTA — Statistička analiza podataka
-## Open-Book ispit | Autor: Antonio Labinjan po materijalima prof. Darko Brborović
-
 ---
 
 
@@ -1896,5 +1894,3 @@ biplot(pca_obj)                           # biplot
 | Prenaučenost – ne evaluirati na testnom skupu | Uvijek procijeniti testnu grešku; nikad samo trening |
 
 ---
-
-*Skripta je izrađena na temelju materijala s predavanja prof. Darka Brborovića: "Višestruka linearna regresija", "Logistička regresija i klasifikacija", "Generalizirani linearni modeli – Poissonova regresija", te materijala o metodama ponovnog uzorkovanja (cross-validacija i bootstrap). Teme stabala odluke, Random Forest, SVM i PCA pokrivaju ishode učenja predmeta.*
