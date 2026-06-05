@@ -1,11 +1,8 @@
 # ISPITNA SKRIPTA — Statistička analiza podataka
-## Open-Book ispit | Autor: priprema za kolegij prof. Darko Brborović
+## Open-Book ispit | Autor: Antonio Labinjan po materijalima prof. Darko Brborović
 
 ---
 
-> **Kako koristiti ovu skriptu:** Svaka tema ima teoriju, ključne pojmove, gotove R kodove, primjere interpretacije i mini cheat-sheet. Koristi Ctrl+F za brzo pronalaženje teme.
-
----
 
 # SADRŽAJ
 
