@@ -1,0 +1,563 @@
+---
+title: "Zadaci s rješenjima — Statistička analiza podataka"
+output: html_document
+---
+
+## 1. Višestruka linearna regresija
+
+**Zadatak 1.1**
+Izgradite model koji predviđa `mpg` na temelju `horsepower`, `weight` i `year` u skupu podataka `Auto`. Ispišite sažetak modela i interpretirajte koeficijent uz `weight`.
+
+**Rješenje:**
+```{r, eval=FALSE}
+library(ISLR2)
+data(Auto)
+
+mod <- lm(mpg ~ horsepower + weight + year, data = Auto)
+summary(mod)
+```
+Koeficijent uz `weight` (npr. -0.0057) znači: povećanje mase vozila za 1 funtu, uz nepromijenjene vrijednosti `horsepower` i `year`, smanjuje potrošnju goriva za ~0.006 milja po galoni.
+
+---
+
+**Zadatak 1.2**
+Predvidite `mpg` za vozilo s `horsepower = 110`, `weight = 2800`, `year = 78`. Izračunajte i interval predikcije i interval pouzdanosti. Koji je širi i zašto?
+
+**Rješenje:**
+```{r, eval=FALSE}
+novi <- data.frame(horsepower = 110, weight = 2800, year = 78)
+predict(mod, newdata = novi, interval = "prediction")
+predict(mod, newdata = novi, interval = "confidence")
+```
+Interval predikcije je širi jer obuhvaća i neizvjesnost oko pojedinačnog opažanja (varijanca greške ε), dok interval pouzdanosti opisuje samo neizvjesnost oko srednje vrijednosti.
+
+---
+
+**Zadatak 1.3**
+Kolika je razlika između trening MSE i testnog MSE i zašto je to važno?
+
+**Rješenje:**
+Trening MSE se uvijek smanjuje dodavanjem prediktora pa je optimistična mjera. Testni MSE mjeri generalizaciju modela na novim podacima — to je prava mjera kvalitete modela. Trening MSE gotovo uvijek manji od testnog.
+
+---
+
+## 2. Dijagnostika reziduala
+
+**Zadatak 2.1**
+Na modelu iz Zadatka 1.1 napravite dijagnostičke grafove. Što biste tražili na svakom od 4 grafa?
+
+**Rješenje:**
+```{r, eval=FALSE}
+par(mfrow = c(2, 2))
+plot(mod)
+```
+- **Residuals vs Fitted**: Tražimo nasumičan raspored oko 0, ravna crvena linija → potvrđuje linearnost i homoskedastičnost.
+- **Q-Q plot**: Točke trebaju pratiti dijagonalu → normalnost reziduala.
+- **Scale-Location**: Ravna crvena linija → homoskedastičnost. Rastući trend = problem.
+- **Residuals vs Leverage**: Identificira utjecajna opažanja (Cook's distance).
+
+---
+
+**Zadatak 2.2**
+Provedite Shapiro-Wilkov test i Breusch-Pagan test na modelu. Interpretirajte rezultate ako dobijete: Shapiro-Wilk p = 0.21, BP p = 0.03.
+
+**Rješenje:**
+```{r, eval=FALSE}
+library(lmtest)
+shapiro.test(residuals(mod))
+bptest(mod)
+```
+- Shapiro-Wilk p = 0.21 > 0.05 → **ne odbacujemo** H₀ o normalnosti. Reziduali su normalno distribuirani. ✓
+- BP p = 0.03 < 0.05 → **odbacujemo** H₀ o homoskedastičnosti. Postoji heteroskedastičnost — standardne pogreške koeficijenata mogu biti nepouzdane. ✗
+
+---
+
+## 3. Kolinearnost i VIF
+
+**Zadatak 3.1**
+Na skupu podataka `Credit` izgradite model s prediktorima `Limit` i `Rating`. Izračunajte VIF i interpretirajte. Kako biste riješili problem?
+
+**Rješenje:**
+```{r, eval=FALSE}
+library(ISLR2)
+library(car)
+data(Credit)
+
+mod_cr <- lm(Balance ~ Limit + Rating, data = Credit)
+vif(mod_cr)
+```
+Očekujemo VIF >> 10 za oba prediktora (jer su korelirana s r ≈ 0.997). To znači ozbiljnu kolinearnost — koeficijenti su nestabilni i p-vrijednosti nepouzdane, unatoč visokom R². Rješenje: ukloniti jedan od prediktora (npr. `Rating`).
+
+---
+
+**Zadatak 3.2**
+Što se događa s p-vrijednostima prediktora `Limit` i `Rating` kada ih koristimo zajedno u modelu, u usporedbi s modelima gdje su sami? Zašto?
+
+**Rješenje:**
+```{r, eval=FALSE}
+summary(lm(Balance ~ Limit, data = Credit))   # značajan
+summary(lm(Balance ~ Rating, data = Credit))  # značajan
+summary(lm(Balance ~ Limit + Rating, data = Credit))  # oba neznačajna!
+```
+Kada su zajedno, oba mogu postati neznačajna jer model ne može razlikovati koji je od njih "zaslužan" za objašnjenu varijancu — informacija se preklapa. R² ostaje visok, ali koeficijenti su nestabilni.
+
+---
+
+## 4. Kvalitativni prediktori i interakcije
+
+**Zadatak 4.1**
+Izgradite model koji predviđa `Balance` na temelju `Income` i `Student` u skupu `Credit`. Interpretirajte koeficijent uz `StudentYes`.
+
+**Rješenje:**
+```{r, eval=FALSE}
+mod_st <- lm(Balance ~ Income + Student, data = Credit)
+summary(mod_st)
+```
+Koeficijent uz `StudentYes` (npr. 382.7) znači da studenti, uz isti prihod, imaju prosječno ~383 dolara veće stanje na kreditnoj kartici od ne-studenata.
+
+---
+
+**Zadatak 4.2**
+Dodajte interakciju između `Income` i `Student`. Što znači statistički značajan koeficijent uz `Income:StudentYes`?
+
+**Rješenje:**
+```{r, eval=FALSE}
+mod_int <- lm(Balance ~ Income * Student, data = Credit)
+summary(mod_int)
+```
+Koeficijent uz `Income:StudentYes` (npr. -11.97) znači da je nagib veze između prihoda i balansa za studente za 11.97 manji nego za ne-studente. Efekt prihoda na balance **nije isti** za studente i ne-studente — interakcija je prisutna.
+
+---
+
+**Zadatak 4.3**
+U skupu `Carseats` izgradite model `Sales ~ Price + ShelveLoc`. Koliko dummy varijabli R kreira za `ShelveLoc` i koja je referentna kategorija?
+
+**Rješenje:**
+```{r, eval=FALSE}
+data(Carseats)
+mod_shelf <- lm(Sales ~ Price + ShelveLoc, data = Carseats)
+summary(mod_shelf)
+```
+`ShelveLoc` ima 3 razine (Bad, Good, Medium), pa R kreira **2 dummy varijable**: `ShelveLocGood` i `ShelveLocMedium`. Referentna kategorija je **Bad**. Koeficijent uz `ShelveLocGood` interpretira se kao razlika u prodaji između dobre i loše lokacije, uz fiksiranu cijenu.
+
+---
+
+## 5. Odabir modela
+
+**Zadatak 5.1**
+Na skupu `Auto` izgradite tri modela za `mpg ~ horsepower`: linearni, kvadratni i kubični. Usporedite ih pomoću AIC-a i F-testa. Koji model odaberete?
+
+**Rješenje:**
+```{r, eval=FALSE}
+data(Auto)
+m1 <- lm(mpg ~ horsepower, data = Auto)
+m2 <- lm(mpg ~ horsepower + I(horsepower^2), data = Auto)
+m3 <- lm(mpg ~ horsepower + I(horsepower^2) + I(horsepower^3), data = Auto)
+
+AIC(m1, m2, m3)
+anova(m1, m2)
+anova(m2, m3)
+```
+Kvadratni model tipično ima najmanji AIC. F-test m1 vs m2: p < 0.001 → kvadratni je statistički značajno bolji od linearnog. F-test m2 vs m3: p > 0.05 → kubični ne donosi značajno poboljšanje. **Odabiremo kvadratni model.**
+
+---
+
+**Zadatak 5.2**
+Zašto ne smijemo koristiti R² za usporedbu modela s različitim brojem prediktora?
+
+**Rješenje:**
+R² uvijek raste (ili ostaje jednak) s dodavanjem prediktora, čak i ako novi prediktor nema stvarnog prediktivnog doprinosa. Zato koristimo **prilagođeni R²** (penalizira broj prediktora), **AIC/BIC** ili **cross-validaciju**.
+
+---
+
+## 6. Logistička regresija
+
+**Zadatak 6.1**
+Na skupu `Default` izgradite logistički model koji predviđa `default` na temelju `balance`. Interpretirajte koeficijent uz `balance` kao odds ratio.
+
+**Rješenje:**
+```{r, eval=FALSE}
+data(Default)
+mod_log <- glm(default ~ balance, data = Default, family = binomial)
+summary(mod_log)
+exp(coef(mod_log))
+```
+Ako je odds ratio za `balance` = 1.0055, to znači: povećanje `balance` za 1 dolar množi izglede defaulta s 1.0055. Porast za 100 dolara množi izglede s exp(100 · β₁) ≈ 1.73 — izgledi defaulta rastu za ~73%.
+
+---
+
+**Zadatak 6.2**
+Klasificirajte opažanja s pragom 0.5 i izračunajte točnost modela. Zašto visoka točnost ne mora biti dovoljna mjera?
+
+**Rješenje:**
+```{r, eval=FALSE}
+vjerojatnoci <- predict(mod_log, type = "response")
+predikcija <- ifelse(vjerojatnoci > 0.5, "Yes", "No")
+table(Predikcija = predikcija, Stvarno = Default$default)
+mean(predikcija == Default$default)
+```
+Visoka točnost može biti zavaravajuća kod **neuravnoteženih klasa** (npr. samo 3% defaulta). Model koji uvijek predviđa "No" ima ~97% točnosti, ali je beskoristan. Treba pratiti i **osjetljivost** (sensitivity) i **specifičnost**.
+
+---
+
+## 7. Mjere kvalitete klasifikacije
+
+**Zadatak 7.1**
+Iz matrice zabune izračunajte točnost, osjetljivost i specifičnost:
+
+|  | Stvarno No | Stvarno Yes |
+|--|--|--|
+| **Pred. No** | 9644 | 252 |
+| **Pred. Yes** | 23 | 81 |
+
+**Rješenje:**
+- **Točnost** = (9644 + 81) / (9644 + 252 + 23 + 81) = 9725 / 10000 = **97.25%**
+- **Osjetljivost** (TPR) = 81 / (81 + 252) = 81 / 333 = **24.3%** ← jako loše!
+- **Specifičnost** (TNR) = 9644 / (9644 + 23) = 9644 / 9667 = **99.8%**
+
+Unatoč visokoj točnosti, model loše detektira stvarne slučajeve defaulta (niska osjetljivost).
+
+---
+
+**Zadatak 7.2**
+Što je ROC krivulja i što nam govori AUC?
+
+**Rješenje:**
+ROC krivulja prikazuje osjetljivost (TPR) nasuprot stopi lažno pozitivnih (FPR = 1 - specifičnost) za sve moguće pragove klasifikacije. **AUC** (površina ispod krivulje) mjeri ukupnu diskriminacijsku sposobnost modela:
+- AUC = 0.5 → model ne bolje od slučajnog
+- AUC = 1.0 → savršena klasifikacija
+- AUC > 0.8 → dobar model
+
+---
+
+## 8. KNN klasifikacija
+
+**Zadatak 8.1**
+Što određuje "fleksibilnost" KNN modela i kako se mijenja bias-variance tradeoff s povećanjem K?
+
+**Rješenje:**
+Fleksibilnost KNN-a određuje **K** (broj susjeda):
+- Mali K (npr. K=1): visoka fleksibilnost → mala pristranost, velika varijanca → prenaučenost
+- Veliki K (npr. K=100): niska fleksibilnost → veća pristranost, manja varijanca → podnaučenost
+
+Optimalni K se bira cross-validacijom.
+
+---
+
+**Zadatak 8.2**
+Zašto je važno standardizirati prediktore prije KNN-a?
+
+**Rješenje:**
+KNN se temelji na udaljenostima između opažanja. Ako prediktori imaju različite mjerne jedinice/skale (npr. prihod u tisućama, godine u deseticama), prediktori s većim vrijednostima dominiraju izračunom udaljenosti. Standardizacijom (mean=0, sd=1) svaki prediktor jednako doprinosi.
+
+---
+
+## 9. Poissonova regresija
+
+**Zadatak 9.1**
+Kada koristimo Poissonovu regresiju? Izgradite model na skupu `Bikeshare` koji predviđa `bikers` na temelju `temp` i `workingday`.
+
+**Rješenje:**
+Poissonovu regresiju koristimo kada je odzivna varijabla **broj događaja** (cijeli broj ≥ 0).
+
+```{r, eval=FALSE}
+data(Bikeshare)
+mod_pois <- glm(bikers ~ temp + workingday, data = Bikeshare, family = poisson)
+summary(mod_pois)
+exp(coef(mod_pois))
+```
+
+---
+
+**Zadatak 9.2**
+Kako provjeravate prekomjernu disperziju i što radite ako je pronađete?
+
+**Rješenje:**
+```{r, eval=FALSE}
+deviance(mod_pois) / df.residual(mod_pois)
+```
+Ako je omjer >> 1 (npr. > 2), postoji prekomjerna disperzija — varijanca podataka je veća od očekivane za Poissonov model. Rješenje: koristiti **quasipoisson** koji procjenjuje disperzijski parametar i daje konzervativnije (veće) standardne pogreške.
+
+```{r, eval=FALSE}
+mod_quasi <- glm(bikers ~ temp + workingday, data = Bikeshare, family = quasipoisson)
+```
+
+---
+
+**Zadatak 9.3**
+Koeficijent uz `temp` u Poissonovom modelu iznosi 0.043. Interpretirajte ga.
+
+**Rješenje:**
+exp(0.043) ≈ 1.044. Povećanje temperature za 1 jedinicu, uz ostale prediktore fiksirane, množi očekivani broj biciklista s **1.044**, tj. povećava ga za ~4.4%.
+
+---
+
+## 10. Cross-validacija
+
+**Zadatak 10.1**
+Koja je razlika između LOOCV i 10-fold CV? Kada biste preferirali koji?
+
+**Rješenje:**
+- **LOOCV**: svako opažanje jednom je testni skup → nepristrana procjena, ali računski skupa (posebno za velike skupove) i visoka varijanca procjene.
+- **10-fold CV**: podaci se dijele na 10 dijelova → brža, tipično manji bias-variance problem, preporučena u praksi.
+
+---
+
+**Zadatak 10.2**
+Koristite 10-fold CV za usporedbu linearnog i kvadratnog modela `mpg ~ horsepower` na skupu `Auto`.
+
+**Rješenje:**
+```{r, eval=FALSE}
+library(boot)
+data(Auto)
+
+glm1 <- glm(mpg ~ horsepower, data = Auto)
+glm2 <- glm(mpg ~ horsepower + I(horsepower^2), data = Auto)
+
+set.seed(1)
+cv1 <- cv.glm(Auto, glm1, K = 10)$delta[1]
+cv2 <- cv.glm(Auto, glm2, K = 10)$delta[1]
+
+cv1; cv2
+```
+Model s manjim CV MSE je bolji. Tipično kvadratni model ima manji CV MSE → odabiremo kvadratni.
+
+---
+
+## 11. Bootstrap
+
+**Zadatak 11.1**
+Što je bootstrap i čemu služi? Kako se razlikuje od cross-validacije?
+
+**Rješenje:**
+Bootstrap je metoda uzorkovanja s vraćanjem — iz originalnih n opažanja stvaramo B novih skupova podataka veličine n i na svakom procjenjujemo statistiku. Koristimo ga za procjenu **standardnih pogrešaka** i **intervala pouzdanosti** procjenitelja.
+
+Razlika: cross-validacija procjenjuje **testnu pogrešku modela** (generalizacija), a bootstrap procjenjuje **neizvjesnost procjenitelja** (npr. SE koeficijenta).
+
+---
+
+**Zadatak 11.2**
+Napišite bootstrap procjenu standardne pogreške za koeficijent `horsepower` u modelu `mpg ~ horsepower`.
+
+**Rješenje:**
+```{r, eval=FALSE}
+library(boot)
+
+boot_fn <- function(data, index) {
+  mod <- lm(mpg ~ horsepower, data = data, subset = index)
+  coef(mod)["horsepower"]
+}
+
+set.seed(1)
+boot_rezultat <- boot(Auto, boot_fn, R = 1000)
+boot_rezultat
+boot.ci(boot_rezultat, type = "perc")
+```
+Usporedite bootstrap SE s teorijskom SE iz `summary(lm(...))`. Ako su konzistentne, procjena je stabilna.
+
+---
+
+## 12. Stabla odluke
+
+**Zadatak 12.1**
+Izgradite stablo odluke za klasifikaciju `High` prodaje na skupu `Carseats` (koristite `Sales > 8` kao definiciju). Evaluirajte na testnom skupu.
+
+**Rješenje:**
+```{r, eval=FALSE}
+install.packages("tree")
+library(tree)
+data(Carseats)
+Carseats$High <- factor(ifelse(Carseats$Sales > 8, "Yes", "No"))
+
+set.seed(1)
+train <- sample(1:nrow(Carseats), 200)
+stablo <- tree(High ~ . - Sales, data = Carseats, subset = train)
+
+predikcija <- predict(stablo, Carseats[-train, ], type = "class")
+table(predikcija, Carseats[-train, "High"])
+mean(predikcija == Carseats[-train, "High"])
+```
+
+---
+
+**Zadatak 12.2**
+Što je pruning stabla i zašto ga radimo?
+
+**Rješenje:**
+Pruning (rezanje) smanjuje složenost stabla uklanjanjem grana koje malo doprinose prediktivnoj točnosti. Bez pruning-a, duboko stablo se prenaučava (nizak trening MSE, visok testni MSE). Optimalnu veličinu stabla biramo cross-validacijom:
+
+```{r, eval=FALSE}
+cv_stablo <- cv.tree(stablo, FUN = prune.misclass)
+plot(cv_stablo$size, cv_stablo$dev, type = "b")
+optimalni_k <- cv_stablo$size[which.min(cv_stablo$dev)]
+podrezano <- prune.misclass(stablo, best = optimalni_k)
+```
+
+---
+
+## 13. Random Forest
+
+**Zadatak 13.1**
+Izgradite Random Forest model za regresiju na skupu `Boston` (odziv: `medv`). Ispišite važnost varijabli.
+
+**Rješenje:**
+```{r, eval=FALSE}
+install.packages("randomForest")
+library(randomForest)
+library(ISLR2)
+data(Boston)
+
+set.seed(1)
+train <- sample(1:nrow(Boston), nrow(Boston) / 2)
+rf_mod <- randomForest(medv ~ ., data = Boston, subset = train,
+                       mtry = 6, ntree = 500, importance = TRUE)
+
+importance(rf_mod)
+varImpPlot(rf_mod)
+
+# Testna greška
+predikcija <- predict(rf_mod, Boston[-train, ])
+mean((predikcija - Boston[-train, "medv"])^2)  # MSE
+```
+
+---
+
+**Zadatak 13.2**
+Što je parametar `mtry` u Random Forestu i koje su tipične vrijednosti za klasifikaciju i regresiju?
+
+**Rješenje:**
+`mtry` je broj prediktora koji se nasumično razmatraju pri svakoj podjeli stabla. Ovo uvodi **dekorelaciju** stabala — bez toga bi sva stabla bila slična (dominirao bi najjači prediktor).
+- Klasifikacija: `mtry` ≈ √p
+- Regresija: `mtry` ≈ p/3
+
+gdje je p ukupan broj prediktora.
+
+---
+
+## 14. Support Vector Machine (SVM)
+
+**Zadatak 14.1**
+Koja je razlika između linearnog i radijalnog kernela u SVM-u? Kada biste koristili koji?
+
+**Rješenje:**
+- **Linearni kernel**: granica odluke je ravna linija/hiperravnina. Koristimo za linearno razdvojive podatke ili kada ima puno prediktora (npr. tekst).
+- **Radijalni kernel** (RBF): može modelirati nelinearne granice. Koristimo kada podaci nisu linearno razdvojivi. Zahtijeva podešavanje parametara `cost` i `gamma`.
+
+---
+
+**Zadatak 14.2**
+Provedite `tune()` za odabir optimalnog `cost` i `gamma` za SVM s radijalnim kernelom.
+
+**Rješenje:**
+```{r, eval=FALSE}
+library(e1071)
+
+set.seed(1)
+tune_rezultat <- tune(svm, High ~ . - Sales,
+                      data = Carseats[train, ],
+                      kernel = "radial",
+                      ranges = list(
+                        cost = c(0.1, 1, 10, 100),
+                        gamma = c(0.01, 0.1, 1)
+                      ))
+
+summary(tune_rezultat)
+best_mod <- tune_rezultat$best.model
+
+# Evaluacija na testnom skupu
+pred_svm <- predict(best_mod, Carseats[-train, ])
+table(pred_svm, Carseats[-train, "High"])
+```
+`tune()` koristi 10-fold CV interno za odabir optimalnih hiperparametara.
+
+---
+
+## 15. PCA — Analiza glavnih komponenti
+
+**Zadatak 15.1**
+Provedite PCA na skupu `USArrests`. Zašto koristite `scale = TRUE`? Koliko komponenti objašnjava 80% varijance?
+
+**Rješenje:**
+```{r, eval=FALSE}
+data(USArrests)
+pca <- prcomp(USArrests, scale = TRUE)
+summary(pca)
+```
+`scale = TRUE` je potrebno jer varijable imaju različite mjerne jedinice i skale (npr. `UrbanPop` u postocima, `Murder` u stopama). Bez standardizacije, varijabla s većim vrijednostima (npr. `Assault`) dominirala bi PCA-om.
+
+Iz `summary()` gledamo kumulativni PVE — tražimo koliko komponenti treba da prijeđe 80%.
+
+---
+
+**Zadatak 15.2**
+Interpretirajte loadinge PC1 ako su:
+```
+Murder: -0.536, Assault: -0.583, UrbanPop: -0.278, Rape: -0.543
+```
+
+**Rješenje:**
+PC1 ima visoka negativna opterećenja za `Murder`, `Assault` i `Rape`, a manje za `UrbanPop`. Možemo ga interpretirati kao **opći indeks kriminaliteta** — savezne države s niskim (negativnim) vrijednostima PC1 imaju višu stopu nasilja. `UrbanPop` manje doprinosi ovoj komponenti, što sugerira da urbanizacija nije snažno vezana uz nasilje u ovim podacima.
+
+---
+
+**Zadatak 15.3**
+Što nam govori scree plot i gdje tražimo "lakat" (elbow)?
+
+**Rješenje:**
+```{r, eval=FALSE}
+pve <- pca$sdev^2 / sum(pca$sdev^2)
+plot(pve, type = "b", xlab = "Broj komponente", ylab = "PVE")
+```
+Scree plot prikazuje proporciju objašnjene varijance (PVE) za svaku komponentu. **Lakat** je točka nakon koje PVE počinje padati sporije — to je indikacija koliko je komponenti "korisno" zadržati. Nema strogog pravila; obično tražimo 70–80% kumulativnog PVE.
+
+---
+
+## Bonus: Kombinirani zadatak
+
+**Zadatak B.1**
+Za skup `Default`:
+1. Podijelite na trening (70%) i testni skup (30%).
+2. Izgradite logistički model s prediktorima `balance` i `income`.
+3. Izračunajte točnost, osjetljivost i specifičnost na testnom skupu.
+4. Usporedite s Random Forest modelom.
+
+**Rješenje:**
+```{r, eval=FALSE}
+library(ISLR2)
+library(randomForest)
+data(Default)
+
+set.seed(42)
+n <- nrow(Default)
+train_idx <- sample(1:n, 0.7 * n)
+
+train_data <- Default[train_idx, ]
+test_data  <- Default[-train_idx, ]
+
+# Logistička regresija
+mod_log <- glm(default ~ balance + income, data = train_data, family = binomial)
+vjer <- predict(mod_log, newdata = test_data, type = "response")
+pred_log <- ifelse(vjer > 0.5, "Yes", "No")
+cm_log <- table(Predikcija = pred_log, Stvarno = test_data$default)
+print(cm_log)
+
+# Mjere
+tocnost <- sum(diag(cm_log)) / sum(cm_log)
+osjetljivost <- cm_log["Yes","Yes"] / sum(cm_log[,"Yes"])
+specificnost <- cm_log["No","No"] / sum(cm_log[,"No"])
+cat("Točnost:", round(tocnost, 3),
+    "\nOsjetljivost:", round(osjetljivost, 3),
+    "\nSpecifičnost:", round(specificnost, 3))
+
+# Random Forest
+rf_mod <- randomForest(default ~ balance + income, data = train_data,
+                       ntree = 500, importance = TRUE)
+pred_rf <- predict(rf_mod, newdata = test_data)
+cm_rf <- table(Predikcija = pred_rf, Stvarno = test_data$default)
+print(cm_rf)
+mean(pred_rf == test_data$default)
+```
+
+---
+
+*Napomena: Uvijek postavite `set.seed()` za reproducibilnost rezultata.*
