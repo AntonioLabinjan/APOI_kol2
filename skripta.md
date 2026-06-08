@@ -1,4 +1,4 @@
-# ISPITNA SKRIPTA — Statistička analiza podataka
+# ISPITNA SKRIPTA - Statistička analiza podataka
 ---
 
 
